@@ -2,7 +2,7 @@
 #include "al/core/app/al_App.hpp"
 #include "al/core/graphics/al_Shapes.hpp"
 #include "al/util/ui/al_Parameter.hpp"
-#include "al/util/ui/al_SynthGUI.hpp"
+#include "al/util/ui/al_ControlGUI.hpp"
 
 using namespace al;
 
@@ -52,6 +52,12 @@ public:
         paramServer.print();
     }
 
+    virtual void onAnimate(double dt) override {
+        // You will want to disable navigation and text if the mouse is within
+        // the gui window. You need to do this within the onAnimate callback
+        navControl().active(!gui.usingInput());
+    }
+
     virtual void onDraw(Graphics &g) override
     {
         g.clear();
@@ -94,7 +100,7 @@ private:
     */
     ParameterServer paramServer {"127.0.0.1", 9010};
 
-    SynthGUI gui;
+    ControlGUI gui;
 };
 
 

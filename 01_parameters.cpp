@@ -2,7 +2,7 @@
 #include "al/core/app/al_App.hpp"
 #include "al/core/graphics/al_Shapes.hpp"
 #include "al/util/ui/al_Parameter.hpp"
-#include "al/util/ui/al_SynthGUI.hpp"
+#include "al/util/ui/al_ControlGUI.hpp"
 
 using namespace al;
 
@@ -21,6 +21,12 @@ public:
         // Register the parameters with the GUI
         gui << X << Y << Size;
         gui.init(); // Initialize GUI. Don't forget this!
+    }
+
+    virtual void onAnimate(double dt) override {
+        // You will want to disable navigation and text if the mouse is within
+        // the gui window. You need to do this within the onAnimate callback
+        navControl().active(!gui.usingInput());
     }
 
     virtual void onDraw(Graphics &g) override
@@ -68,7 +74,7 @@ private:
     Parameter Y {"Y", "Position", 0.0, "", -1.0f, 1.0f};
     Parameter Size {"Scale", "Size", 1.0, "", 0.1f, 3.0f};
 
-    SynthGUI gui;
+    ControlGUI gui;
 };
 
 

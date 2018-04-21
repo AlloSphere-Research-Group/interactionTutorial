@@ -4,7 +4,7 @@
 #include "al/util/ui/al_Parameter.hpp"
 #include "al/util/ui/al_Preset.hpp"
 #include "al/core/math/al_Random.hpp"
-#include "al/util/ui/al_SynthGUI.hpp"
+#include "al/util/ui/al_ControlGUI.hpp"
 
 using namespace al;
 
@@ -17,16 +17,12 @@ class MyApp : public App
 public:
 
     virtual void onCreate() override {
-        // Set the camera to view the scene
-        nav().pos(Vec3d(0,0,8));
-        // Prepare mesh to draw a cone
-        addCone(mesh);
+        nav().pos(Vec3d(0,0,8)); // Set the camera to view the scene
+        addCone(mesh); // Prepare mesh to draw a cone
         Light::globalAmbient({0.2, 1, 0.2});
 
-        // Register the parameters with the GUI
-        gui << X << Y << Size;
-        // Register the preset handler with GUI to have control of the presets
-        gui << presetHandler;
+        gui << X << Y << Size; // Register the parameters with the GUI
+        gui << presetHandler; // Register the preset handler with GUI
         gui.init(); // Initialize GUI. Don't forget this!
 
         /*
@@ -35,6 +31,42 @@ public:
         */
         presetHandler << X << Y << Size;
         presetHandler.setMorphTime(2.0); // Presets will take 2 seconds to "morph"
+
+        /*
+            You need to register the PresetHandler object into the PresetServer
+            in order to expose it via OSC.
+
+            By default, a PresetServer will listen on OSC path "/preset", although this
+            can be changed calling the setAddress() function. The OSC message must
+            contain a float or an int value providing the preset index.
+
+            You can also change the morph time by sending a float value to OSC address
+            "/preset/morphTime".
+        */
+        presetServer << presetHandler;
+        /*
+            Adding a listener to a preset server makes the listener receive notification
+            of any preset or morph time changes.
+        */
+        presetServer.addListener("127.0.0.1", 9050);
+
+        /*
+            The PresetServer print() function gives details about the PresetServer
+            configuration. It will print something like:
+
+        Preset server listening on: 127.0.0.1:9011
+        Communicating on path: /preset
+        Registered listeners:
+        127.0.0.1:9050
+        */
+        presetServer.print();
+
+    }
+
+    virtual void onAnimate(double dt) override {
+        // You will want to disable navigation and text if the mouse is within
+        // the gui window. You need to do this within the onAnimate callback
+        navControl().active(!gui.usingInput());
     }
 
     virtual void onDraw(Graphics &g) override
@@ -108,10 +140,15 @@ private:
         function.
     */
     PresetHandler presetHandler {"sequencerPresets"};
+    /*
+        A PresetServer exposes the preset handler via OSC. You provide the
+        address and port on which to listen.
+    */
+    PresetServer presetServer {"127.0.0.1", 9011};
 
     rnd::Random<> randomGenerator; // Random number generator
 
-    SynthGUI gui;
+    ControlGUI gui;
 };
 
 
