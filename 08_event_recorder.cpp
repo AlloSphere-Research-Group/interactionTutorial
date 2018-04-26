@@ -154,7 +154,7 @@ public:
         // internal PolySynth
         mSequencer.render(g);
 
-        gui.onDraw(g);
+        gui.draw(g);
     }
 
     virtual void onSound(AudioIOData &io) override {

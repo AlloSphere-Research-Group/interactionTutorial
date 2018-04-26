@@ -122,7 +122,7 @@ public:
         mPolySynth.render(g); // Call render for PolySynth to generate its output
 
         // Draw th GUI
-        gui.onDraw(g);
+        gui.draw(g);
     }
 
     virtual void onSound(AudioIOData &io) override {

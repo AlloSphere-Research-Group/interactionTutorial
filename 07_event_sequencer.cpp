@@ -125,7 +125,7 @@ public:
 
         // We don't need the GUI in this case, it has no effect as we are not
         // connecting the parameters
-//        gui.onDraw(g);
+//        gui.draw(g);
     }
 
     virtual void onSound(AudioIOData &io) override {

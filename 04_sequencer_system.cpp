@@ -83,7 +83,7 @@ public:
         g.popMatrix();
 
         // Draw th GUI
-        gui.onDraw(g);
+        gui.draw(g);
     }
 
     virtual void onKeyDown(const Keyboard& k) override
