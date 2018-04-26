@@ -54,7 +54,7 @@ public:
         g.pushMatrix();
         // You can get a parameter's value using the get() member function
         g.translate(mX, mY, 0);
-        g.scale(mSize);
+        g.scale(mSize * mEnvelope.value());
         g.draw(mesh); // Draw the mesh
         g.popMatrix();
     }
@@ -94,7 +94,6 @@ private:
 
     float mX {0}, mY {0}, mSize {1.0}; // This are the internal parameters
 
-    int mDurCounter {0}; // The number of frames remaining for active
 };
 
 
@@ -166,12 +165,17 @@ int main(int argc, char *argv[])
     gam::sampleRate(44100);
 
     // Before starting the application we will schedule events in the sequencer
-    //
 
     app.sequencer().add<MyVoice>(0, 1).set(0, 0, 0.5, 440, 0.1, 0.5);
     app.sequencer().add<MyVoice>(0.5, 1).set(0, 0.5, 0.5, 880, 0.1, 0.5);
     app.sequencer().add<MyVoice>(1, 2).set(0.5, 0.5, 0.7, 660, 1.0, 0.05);
 
+    app.sequencer().add<MyVoice>(1.1, 2).set(0.6, 0.5, 0.7, 650, 1.0, 2.0);
+    app.sequencer().add<MyVoice>(1.2, 2).set(0.3, 0.4, 0.7, 640, 1.0, 2.0);
+    app.sequencer().add<MyVoice>(1.3, 2).set(0.2, 0.3, 0.7, 630, 1.0, 2.0);
+    app.sequencer().add<MyVoice>(1.4, 2).set(0.1, 0.2, 0.7, 620, 1.0, 2.0);
+    app.sequencer().add<MyVoice>(1.5, 2).set(0.0, 0.2, 0.7, 610, 1.0, 2.0);
+    app.sequencer().add<MyVoice>(1.6, 2).set(-0.1, 0.1, 0.7, 600, 1.0, 2.0);
 
     app.start();
     return 0;
