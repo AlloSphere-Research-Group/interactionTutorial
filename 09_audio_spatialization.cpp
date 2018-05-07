@@ -2,11 +2,17 @@
 #include "al/core/app/al_App.hpp"
 #include "al/core/graphics/al_Shapes.hpp"
 #include "al/core/math/al_Random.hpp"
+
+#include "al/core/sound/al_StereoPanner.hpp"
+#include "al/core/sound/al_Vbap.hpp"
+#include "al/core/sound/al_Dbap.hpp"
+#include "al/core/sound/al_Ambisonics.hpp"
+
+
 #include "al/util/ui/al_Parameter.hpp"
 #include "al/util/ui/al_PresetSequencer.hpp"
 
 #include "al/util/ui/al_SynthSequencer.hpp"
-#include "al/util/ui/al_SynthRecorder.hpp"
 #include "al/util/ui/al_ControlGUI.hpp"
 
 #include "Gamma/Oscillator.h"
@@ -16,41 +22,17 @@
 using namespace al;
 
 /*
- * This tutorial shows how to use the SynthRecorder class
- *
- * This class allows recording and playback of a PolySynth to a text file.
- * To allow the SynthVoice to read and write you must implement the
- * setParamFields and getParamFields function and register the SynthVoice to
- * allow instantiation from a text file.
- *
- * The sequences are stored as text files in the running directory (usually
- * bin/) with the extension ".synthSequence".
- *
- * You can also write or generate these text files manually. The following
- * commands are accepted:
- *
- * Event
- * @ absTime duration synthName pFields....
- *
- * e.g. @ 0.981379 0.116669 MyVoice 0 0 1 698.456 0.1 1
- *
- * Turnon
- * + absTime eventId synthName pFields....
- *
- * e.g. + 0.981379 25 MyVoice 0 0 1 698.456 0.1 1
- *
- * Turnoff
- * - absTime eventId
- *
- * eventId looks of the oldest id match adn turns it off
- * e.g. - 1.3 25
- *
- * Tempo
- * t absTime tempoBpm
- *
- * e.g. t 4.5 120
- *
+ * This tutorial shows how to use audio spatialization for SynthVoices and
+ * PolySynth. It shows how each voice can have its own position in space
+ * handled by a single spatializer object owned by the PolySynth.
 */
+
+// Choose the spatializer type here:
+
+//#define SpatializerType StereoPanner
+#define SpatializerType Vbap
+//#define SpatializerType Dbap
+//#define SpatializerType AmbisonicsSpatializer
 
 class MyVoice : public SynthVoice {
 public:
@@ -63,9 +45,22 @@ public:
     }
 
     virtual void onProcess(AudioIOData &io) override {
+        // First we will render the audio into bus 0
+        // Note that we have allocated the bus on initialization by calling
+        // channelsBus() for the AudioIO object.
+        // We could run the spatializer in sample by sample mode here and
+        // avoid using the bus altogether but this will be significantly
+        // slower, so for efficiency, we render the output first to a bus
+        // and then we use the spatializer on that buffer.
+
         while(io()) {
-            io.out(0) += mEnvelope() * mSource() * 0.05; // Output on the first channel scaled by 0.05;
+            io.bus(0) = mEnvelope() * mSource() * 0.05; // compute sample
         }
+        // Then we will pass the bus buffer to the spatializer's
+        // renderBuffer function. The spatializer will
+        SpatializerType *spatializer = static_cast<SpatializerType *>(userData());
+        spatializer->renderBuffer(io, mPose, io.busBuffer(0), io.framesPerBuffer());
+
         if (mEnvelope.done()) {
             free();
         }
@@ -73,28 +68,20 @@ public:
 
     virtual void onProcess(Graphics &g) {
         g.pushMatrix();
-        // You can get a parameter's value using the get() member function
-        g.translate(mX, mY, 0);
+        g.translate(mPose.x(), mPose.y(), mPose.z());
         g.scale(mSize * mEnvelope.value());
         g.draw(mesh); // Draw the mesh
         g.popMatrix();
     }
 
     void set(float x, float y, float size, float frequency, float attackTime, float releaseTime) {
-        mX = x;
-        mY = y;
+        mPose.pos(x, y, 0);
         mSize = size;
         mSource.freq(frequency);
         mEnvelope.lengths()[0] = attackTime;
         mEnvelope.lengths()[2] = releaseTime;
     }
 
-    /*
-     * You need to implement the setParamFields and getParamFields functions
-     * to be able to communicate to the Sequencer. These pFields capture the
-     * internal parameters that are sequenced.
-     * For set parameters, we can use it to directly call set():
-     */
     virtual bool setParamFields(float *pFields, int numFields) override {
         if (numFields != 6) { // Sanity check to make sure we are getting the right number of p-fields
             return false;
@@ -105,8 +92,8 @@ public:
 
     virtual int getParamFields(float *pFields) override {
         // For getParamFields, we will copy the internal parameters into the pointer recieved.
-        pFields[0] = mX;
-        pFields[1] = mY;
+        pFields[0] = mPose.x();
+        pFields[1] = mPose.y();
         pFields[2] = mSize;
         pFields[3] = mSource.freq();
         pFields[4] = mEnvelope.lengths()[0];
@@ -133,7 +120,8 @@ private:
 
     Mesh mesh; // The mesh now belongs to the voice
 
-    float mX {0}, mY {0}, mSize {1.0}; // This are the internal parameters
+    Pose mPose;
+    float mSize {1.0}; // This are the internal parameters
 
 };
 
@@ -142,16 +130,19 @@ class MyApp : public App
 {
 public:
 
+    virtual void onInit() override {
+        // We must call compile() once to prepare the spatializer
+        // This must be done in onInit() to make sure it is called before
+        // audio starts procesing
+        mSpatializer.compile();
+    }
+
+
     virtual void onCreate() override {
         nav().pos(Vec3d(0,0,8)); // Set the camera to view the scene
         Light::globalAmbient({0.2, 1, 0.2});
 
         gui << X << Y << Size << AttackTime << ReleaseTime; // Register the parameters with the GUI
-
-        /*
-         * The SynthRecorder object can be passed to a ControlGUI object to
-         * generate a GUI interface that can be controlled via the mouse
-         */
 
         gui << mRecorder;
         gui << mSequencer;
@@ -159,13 +150,8 @@ public:
         gui.init(); // Initialize GUI. Don't forget this!
 
         navControl().active(false); // Disable nav control (because we are using the control to drive the synth
-
-        // We need to register a PolySynth with the recorder
-        // We could use PolySynth directly and we can also use the PolySynth
-        // contained within the sequencer accesing it through the synth()
-        // function. Using the PolySynth from the sequencer allows both
-        // text file based and programmatic (C++ based) sequencing.
         mRecorder << mSequencer.synth();
+
 
     }
 
@@ -186,22 +172,23 @@ public:
     }
 
     virtual void onSound(AudioIOData &io) override {
-        // We call the render method for the sequencer to render audio
+         // The spatializer must be "prepared" and "finalized" on every block.
+        // We do it here once, independently of the number of voices.
+        mSpatializer.prepare(io);
         mSequencer.render(io);
+        mSpatializer.finalize(io);
     }
 
-    /*
-     * Put back the functions to trigger the PolySynth in real time.
-     * Notice that we are using the PolySynth found within the
-     * sequencer instead of directly
-     */
     virtual void onKeyDown(const Keyboard& k) override
     {
         MyVoice *voice = sequencer().synth().getVoice<MyVoice>();
         int midiNote = asciiToMIDI(k.key());
         float freq = 440.0f * powf(2, (midiNote - 69)/12.0f);
         voice->set(X.get(), Y.get(), Size.get(), freq, AttackTime.get(), ReleaseTime.get());
-        sequencer().synth().triggerOn(voice, 0, midiNote);
+        // We will pass the spatializer as the "user data" to the synth voice
+        // This way the voice will be spatialized within the voice's
+        // onSound
+        sequencer().synth().triggerOn(voice, 0, midiNote, &mSpatializer);
     }
 
     virtual void onKeyUp(const Keyboard &k) override {
@@ -234,6 +221,9 @@ private:
     SynthRecorder mRecorder;
     SynthSequencer mSequencer;
 
+    // A speaker layout and spatializer
+    SpeakerLayout sl {StereoSpeakerLayout()};
+    SpatializerType mSpatializer {sl};
 };
 
 
@@ -241,6 +231,12 @@ int main(int argc, char *argv[])
 {
     MyApp app;
     app.dimensions(800, 600);
+
+    // We will render each voice's output to an internal bus within the
+    // AudioIO object. We need to allocate this bus here, before audio
+    // is opened by initAudio.
+    app.audioIO().channelsBus(1);
+
     app.initAudio(44100, 256, 2, 0);
     gam::sampleRate(44100);
 
@@ -252,3 +248,4 @@ int main(int argc, char *argv[])
     app.start();
     return 0;
 }
+
