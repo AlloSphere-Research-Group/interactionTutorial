@@ -30,9 +30,9 @@ using namespace al;
 // Choose the spatializer type here:
 
 //#define SpatializerType StereoPanner
-#define SpatializerType Vbap
+//#define SpatializerType Vbap
 //#define SpatializerType Dbap
-//#define SpatializerType AmbisonicsSpatializer
+#define SpatializerType AmbisonicsSpatializer
 
 class MyVoice : public SynthVoice {
 public:
