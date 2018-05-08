@@ -47,7 +47,7 @@ public:
     virtual void onProcess(AudioIOData &io) override {
         // First we will render the audio into bus 0
         // Note that we have allocated the bus on initialization by calling
-        // channelsBus() for the AudioIO object.
+        // channelsBus() for the AudioIO object in the main() function.
         // We could run the spatializer in sample by sample mode here and
         // avoid using the bus altogether but this will be significantly
         // slower, so for efficiency, we render the output first to a bus
@@ -57,7 +57,12 @@ public:
             io.bus(0) = mEnvelope() * mSource() * 0.05; // compute sample
         }
         // Then we will pass the bus buffer to the spatializer's
-        // renderBuffer function. The spatializer will
+        // renderBuffer function. The spatializer will map the signal to
+        // the loudspeaker setup according to the position and the type
+        // of spatializer. Note that all voices share a spatializer that is
+        // owned by the PolySynth. The user data queried here can be set when
+        // triggering the voice or by setting a default user data in the
+        // PolySynth using setDefaultUserData()
         SpatializerType *spatializer = static_cast<SpatializerType *>(userData());
         spatializer->renderBuffer(io, mPose, io.busBuffer(0), io.framesPerBuffer());
 
@@ -135,6 +140,12 @@ public:
         // This must be done in onInit() to make sure it is called before
         // audio starts procesing
         mSpatializer.compile();
+
+        // We need to pass the spatializer to each of the voices to spatialize
+        // each one differently. We do this by setting the spatializer as
+        // the default user data. This will get passed to voices before they are
+        // triggered.
+        mSequencer.synth().setDefaultUserData(&mSpatializer);
     }
 
 
@@ -185,10 +196,14 @@ public:
         int midiNote = asciiToMIDI(k.key());
         float freq = 440.0f * powf(2, (midiNote - 69)/12.0f);
         voice->set(X.get(), Y.get(), Size.get(), freq, AttackTime.get(), ReleaseTime.get());
-        // We will pass the spatializer as the "user data" to the synth voice
-        // This way the voice will be spatialized within the voice's
-        // onSound
-        sequencer().synth().triggerOn(voice, 0, midiNote, &mSpatializer);
+
+        sequencer().synth().triggerOn(voice, 0, midiNote);
+        // We can pass the spatializer as the "user data" to the synth voice
+        // This is not necessary as we have already set it as the default user
+        // data. But you can pass per instance user data here if needed.
+        // Note that for text sequences to work, you need to set a default
+        // user data as you can't pass user data from the text file.
+//        sequencer().synth().triggerOn(voice, 0, midiNote, &mSpatializer);
     }
 
     virtual void onKeyUp(const Keyboard &k) override {
