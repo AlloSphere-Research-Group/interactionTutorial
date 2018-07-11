@@ -4,9 +4,9 @@
 #include "al/core/math/al_Random.hpp"
 #include "al/util/ui/al_Parameter.hpp"
 #include "al/util/ui/al_PresetSequencer.hpp"
-
-#include "al/util/ui/al_SynthSequencer.hpp"
 #include "al/util/ui/al_ControlGUI.hpp"
+
+#include "al/util/scene/al_SynthSequencer.hpp"
 
 #include "Gamma/Oscillator.h"
 #include "Gamma/Envelope.h"
