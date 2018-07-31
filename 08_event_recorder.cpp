@@ -1,12 +1,11 @@
 
 #include "al/core/app/al_App.hpp"
 #include "al/core/graphics/al_Shapes.hpp"
-#include "al/core/math/al_Random.hpp"
 #include "al/util/ui/al_Parameter.hpp"
 #include "al/util/ui/al_PresetSequencer.hpp"
 
-#include "al/util/ui/al_SynthSequencer.hpp"
-#include "al/util/ui/al_SynthRecorder.hpp"
+#include "al/util/scene/al_SynthSequencer.hpp"
+#include "al/util/scene/al_SynthRecorder.hpp"
 #include "al/util/ui/al_ControlGUI.hpp"
 
 #include "Gamma/Oscillator.h"
@@ -60,6 +59,23 @@ public:
         mEnvelope.lengths(0.1f,  0.5f);
         mEnvelope.levels(0, 1, 0);
         mEnvelope.sustainPoint(1);
+
+        // We will be using the internal "frequency" parameter, so we need to connect
+        // it to the oscillators frequency. Whenever the mFrequency parameter changes,
+        // this will force a change in the oscillator. It is necessary to use a
+        // Parameter here in order to simplify the sequencing, as if parameters are
+        // used, the sequence recording and playback is automatic after registering
+        // the paramters as "fields"
+        mFrequency.registerChangeCallback([this](float value) {mSource.freq(value);});
+        // We need to do the same fo the attack and the release
+        mAttack.registerChangeCallback([this](float value) {mEnvelope.lengths()[0] = value;});
+        mRelease.registerChangeCallback([this](float value) {mEnvelope.lengths()[2] = value;});
+        
+        // Register the parameters as fields. This sets the order of the parameters into the
+        // fields for sequencing. The order in which the parameters are registered determines
+        // the order in which the are stored and read from sequences. Be careful as changes
+        // here will most likely break your existing sequences!
+        *this << mX << mY << mSize << mFrequency << mAttack << mRelease;
     }
 
     virtual void onProcess(AudioIOData &io) override {
@@ -84,35 +100,9 @@ public:
         mX = x;
         mY = y;
         mSize = size;
-        mSource.freq(frequency);
-        mEnvelope.lengths()[0] = attackTime;
-        mEnvelope.lengths()[2] = releaseTime;
-    }
-
-    /*
-     * You need to implement the setParamFields and getParamFields functions
-     * to be able to communicate to the Sequencer. These pFields capture the
-     * internal parameters that are sequenced.
-     * For set parameters, we can use it to directly call set():
-     */
-    virtual bool setParamFields(float *pFields, int numFields) override {
-        if (numFields != 6) { // Sanity check to make sure we are getting the right number of p-fields
-            return false;
-        }
-        set(pFields[0], pFields[1], pFields[2], pFields[3], pFields[4], pFields[5]);
-        return true;
-    }
-
-    virtual int getParamFields(float *pFields) override {
-        // For getParamFields, we will copy the internal parameters into the pointer recieved.
-        pFields[0] = mX;
-        pFields[1] = mY;
-        pFields[2] = mSize;
-        pFields[3] = mSource.freq();
-        pFields[4] = mEnvelope.lengths()[0];
-        pFields[5] = mEnvelope.lengths()[2];
-
-        return 6;
+        mFrequency = frequency;
+        mAttack = attackTime;
+        mRelease = releaseTime;
     }
 
     virtual void onTriggerOn() override {
@@ -122,7 +112,6 @@ public:
 
     virtual void onTriggerOff() override {
         // We want to force the envelope to release:
-
         mEnvelope.release();
     }
 
@@ -132,8 +121,16 @@ private:
     gam::AD<> mEnvelope;
 
     Mesh mesh; // The mesh now belongs to the voice
-
-    float mX {0}, mY {0}, mSize {1.0}; // This are the internal parameters
+    
+    // These are the internal parameters. They "freeze" or copy the external
+    // parameters. You can this way separate "per instance" parameters
+    // from "global" parameters.
+    Parameter mX {"X", "", 0};
+    Parameter mY {"Y", "", 0};
+    Parameter mSize {"Size", "", 1.0};
+    Parameter mFrequency {"Frequency", "", 0.0};
+    Parameter mAttack {"Attack", "", 0.0};
+    Parameter mRelease {"Release", "", 0.0};
 
 };
 
@@ -226,8 +223,6 @@ private:
     Parameter Size {"Scale", "Size", 1.0, "", 0.1f, 3.0f};
     Parameter AttackTime {"AttackTime", "Sound", 0.1, "", 0.001f, 2.0f};
     Parameter ReleaseTime {"ReleaseTime", "Sound", 1.0, "", 0.001f, 5.0f};
-
-    rnd::Random<> randomGenerator; // Random number generator
 
     ControlGUI gui;
 

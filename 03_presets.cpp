@@ -146,7 +146,7 @@ private:
     */
     PresetServer presetServer {"127.0.0.1", 9011};
 
-    rnd::Random<> randomGenerator; // Random number generator
+    al::rnd::Random<> randomGenerator; // Random number generator
 
     ControlGUI gui;
 };
