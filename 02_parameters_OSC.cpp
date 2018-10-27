@@ -19,7 +19,7 @@ public:
         nav().pos(Vec3d(0,0,8));
         // Prepare mesh to draw a cone
         addCone(mesh);
-        Light::globalAmbient({0.2, 1, 0.2});
+        mesh.primitive(Mesh::LINE_STRIP);
 
         // Register the parameters with the GUI
         gui << X << Y << Size;
@@ -29,14 +29,14 @@ public:
         Parameters need to be added to the ParameterServer by using the
         streaming operator <<.
         */
-        paramServer << X << Y << Size; // Add parameters to parameter server
+        parameterServer() << X << Y << Size; // Add parameters to parameter server
 
         /*
         You can add an OSC listener to a parameter server. Any change to any
         parameter will be broadcast to the OSC address and port registered using the
         addListener() function.
         */
-        paramServer.addListener("127.0.0.1", 13560);
+        parameterServer().addListener("127.0.0.1", 13560);
 
         /*
         The print function of the ParameterServer object provides information
@@ -49,7 +49,7 @@ public:
         Parameter Y : /Position/Y
         Parameter Scale : /Size/Scale
         */
-        paramServer.print();
+        parameterServer().print();
     }
 
     virtual void onAnimate(double dt) override {
@@ -61,8 +61,6 @@ public:
     virtual void onDraw(Graphics &g) override
     {
         g.clear();
-        g.lighting(true);
-        g.light(light);
 
         g.pushMatrix();
         // You can get a parameter's value using the get() member function
@@ -76,7 +74,6 @@ public:
     }
 
 private:
-    Light light;
     Mesh mesh;
 
 
@@ -89,16 +86,6 @@ private:
     Parameter X {"X", "Position", 0.0, "", -1.0f, 1.0f};
     Parameter Y {"Y", "Position", 0.0, "", -1.0f, 1.0f};
     Parameter Size {"Scale", "Size", 1.0, "", 0.1f, 3.0f};
-
-
-    /* Once the parameters have been declared they can easily be exposed via OSC
-     using the ParameterServer class. You can specify the IP Address and the
-     network port to listen on.
-
-     To register the parameters to the parameter server, you need to add them
-     using the << streaming operator. See the main function below.
-    */
-    ParameterServer paramServer {"127.0.0.1", 9010};
 
     ControlGUI gui;
 };

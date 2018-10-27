@@ -31,6 +31,7 @@ class MyVoice : public SynthVoice {
 public:
     MyVoice() {
         addCone(mesh); // Prepare mesh to draw a cone
+        mesh.primitive(Mesh::LINE_STRIP);
     }
     /*
      * define onProcess(AudioIOData &io) to determine the audio behavior of the
@@ -90,7 +91,6 @@ public:
 
     virtual void onCreate() override {
         nav().pos(Vec3d(0,0,8)); // Set the camera to view the scene
-        Light::globalAmbient({0.2, 1, 0.2});
 
         gui << X << Y << Size; // Register the parameters with the GUI
         gui.init(); // Initialize GUI. Don't forget this!
@@ -104,7 +104,6 @@ public:
     virtual void onDraw(Graphics &g) override
     {
         g.clear();
-        g.lighting(true);
 
         mPolySynth.render(g); // Call render for PolySynth to generate its output
 
@@ -134,7 +133,7 @@ public:
 
         int midiNote = asciiToMIDI(k.key());
         float freq = 440.0f * powf(2, (midiNote - 69)/12.0f);
-        voice->set(X.get(), Y.get(), Size.get(), freq, 120);
+        voice->set(X, Y, Size, freq, 120);
         /*
          * After the voice is configured, it needs to be triggered in the
          * PolySynth
@@ -143,13 +142,10 @@ public:
     }
 
 private:
-    Light light;
 
     Parameter X {"X", "Position", 0.0, "", -1.0f, 1.0f};
     Parameter Y {"Y", "Position", 0.0, "", -1.0f, 1.0f};
     Parameter Size {"Scale", "Size", 1.0, "", 0.1f, 3.0f};
-
-    rnd::Random<> randomGenerator; // Random number generator
 
     ControlGUI gui;
 

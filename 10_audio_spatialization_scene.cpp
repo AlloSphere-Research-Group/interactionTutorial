@@ -174,7 +174,7 @@ public:
          // The spatializer must be "prepared" and "finalized" on every block.
         // We do it here once, independently of the number of voices.
 
-        scene.configureAudio(audioIO());
+        scene.prepare(audioIO());
         scene.render(io);
     }
 

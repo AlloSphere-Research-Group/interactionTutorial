@@ -26,7 +26,7 @@ public:
     virtual void onCreate() override {
         nav().pos(Vec3d(0,0,8)); // Set the camera to view the scene
         addCone(mesh); // Prepare mesh to draw a cone
-        Light::globalAmbient({0.2, 1, 0.2});
+        mesh.primitive(Mesh::LINE_STRIP);
 
         gui << X << Y << Size; // Register the parameters with the GUI
         gui << presetHandler; // Register the preset handler with GUI
@@ -45,6 +45,9 @@ public:
          * files and then commands the PresetHandler to load them at the right times.
         */
         presetSequencer << presetHandler;
+
+        /* Add the preset sequencer to the GUI */
+        gui << presetSequencer;
         /*
             A preset sequencer is exposed via OSC through a SequenceServer object.
             By default it accepts a string with the name of the sequence to play on the
@@ -72,8 +75,6 @@ public:
     virtual void onDraw(Graphics &g) override
     {
         g.clear();
-        g.lighting(true);
-        g.light(light);
 
         g.pushMatrix();
         // You can get a parameter's value using the get() member function

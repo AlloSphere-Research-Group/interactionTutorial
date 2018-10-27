@@ -16,7 +16,7 @@ public:
         nav().pos(Vec3d(0,0,8));
         // Prepare mesh to draw a cone
         addCone(mesh);
-        Light::globalAmbient({0.2, 1, 0.2});
+        mesh.primitive(Mesh::LINE_STRIP);
 
         // Register the parameters with the GUI
         gui << X << Y << Size;
@@ -32,8 +32,6 @@ public:
     virtual void onDraw(Graphics &g) override
     {
         g.clear();
-        g.lighting(true);
-        g.light(light);
 
         g.pushMatrix();
         // You can get a parameter's value using the get() member function
@@ -46,7 +44,6 @@ public:
         gui.draw(g);
     }
 private:
-    Light light;
     Mesh mesh;
 
     /*

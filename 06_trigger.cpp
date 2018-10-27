@@ -30,6 +30,7 @@ class MyVoice : public SynthVoice {
 public:
     MyVoice() {
         addCone(mesh); // Prepare mesh to draw a cone
+        mesh.primitive(Mesh::LINE_STRIP);
 
         mEnvelope.lengths(0.1f, 0.5f);
         mEnvelope.levels(0, 1, 0);
@@ -103,21 +104,15 @@ public:
 
     virtual void onCreate() override {
         nav().pos(Vec3d(0,0,8)); // Set the camera to view the scene
-        Light::globalAmbient({0.2, 1, 0.2});
 
         gui << X << Y << Size << AttackTime << ReleaseTime; // Register the parameters with the GUI
         gui.init(); // Initialize GUI. Don't forget this!
         navControl().active(false); // Disable nav control (because we are using the control to drive the synth
-
     }
-//    virtual void onAnimate(double dt) override {
-//        navControl().active(!gui.usingInput());
-//    }
 
     virtual void onDraw(Graphics &g) override
     {
         g.clear();
-        g.lighting(true);
 
         mPolySynth.render(g); // Call render for PolySynth to generate its output
 
@@ -171,8 +166,6 @@ private:
     Parameter Size {"Scale", "Size", 1.0, "", 0.1f, 3.0f};
     Parameter AttackTime {"AttackTime", "Sound", 0.1, "", 0.001f, 2.0f};
     Parameter ReleaseTime {"ReleaseTime", "Sound", 1.0, "", 0.001f, 5.0f};
-
-    rnd::Random<> randomGenerator; // Random number generator
 
     ControlGUI gui;
 

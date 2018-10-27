@@ -19,7 +19,7 @@ public:
     virtual void onCreate() override {
         nav().pos(Vec3d(0,0,8)); // Set the camera to view the scene
         addCone(mesh); // Prepare mesh to draw a cone
-        Light::globalAmbient({0.2, 1, 0.2});
+        mesh.primitive(Mesh::LINE_STRIP);
 
         gui << X << Y << Size; // Register the parameters with the GUI
         gui << presetHandler; // Register the preset handler with GUI
@@ -60,6 +60,9 @@ public:
         127.0.0.1:9050
         */
         presetServer.print();
+        /* Alternatively, you can use the parameter server for the app to share the port
+        */
+        parameterServer().registerOSCListener(&presetServer);
 
     }
 
@@ -72,8 +75,6 @@ public:
     virtual void onDraw(Graphics &g) override
     {
         g.clear();
-        g.lighting(true);
-        g.light(light);
 
         g.pushMatrix();
         // You can get a parameter's value using the get() member function

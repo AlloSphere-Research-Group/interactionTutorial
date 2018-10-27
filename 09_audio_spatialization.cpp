@@ -12,7 +12,7 @@
 #include "al/util/ui/al_Parameter.hpp"
 #include "al/util/ui/al_PresetSequencer.hpp"
 
-#include "al/util/ui/al_SynthSequencer.hpp"
+#include "al/util/scene/al_SynthSequencer.hpp"
 #include "al/util/ui/al_ControlGUI.hpp"
 
 #include "Gamma/Oscillator.h"
@@ -38,6 +38,7 @@ class MyVoice : public SynthVoice {
 public:
     MyVoice() {
         addCone(mesh); // Prepare mesh to draw a cone
+        mesh.primitive(LINE_STRIP); 
 
         mEnvelope.lengths(0.1f,  0.5f);
         mEnvelope.levels(0, 1, 0);
@@ -95,7 +96,8 @@ public:
         return true;
     }
 
-    virtual int getParamFields(float *pFields) override {
+    virtual int getParamFields(float *pFields, int maxParams = -1) override {
+        if (maxParams < 6) { return 0;} // Sanity check
         // For getParamFields, we will copy the internal parameters into the pointer recieved.
         pFields[0] = mPose.x();
         pFields[1] = mPose.y();
@@ -146,12 +148,19 @@ public:
         // the default user data. This will get passed to voices before they are
         // triggered.
         mSequencer.synth().setDefaultUserData(&mSpatializer);
+        
+        // Before starting the application we need to register our voice in
+        // the PolySynth (that is inside the sequencer). This allows
+        // triggering the class from a text file.
+        mSequencer.synth().registerSynthClass<MyVoice>("MyVoice");
+
+        // We also need to pre-allocate some voices
+        mSequencer.synth().allocatePolyphony<MyVoice>(10);
     }
 
 
     virtual void onCreate() override {
         nav().pos(Vec3d(0,0,8)); // Set the camera to view the scene
-        Light::globalAmbient({0.2, 1, 0.2});
 
         gui << X << Y << Size << AttackTime << ReleaseTime; // Register the parameters with the GUI
 
@@ -162,8 +171,6 @@ public:
 
         navControl().active(false); // Disable nav control (because we are using the control to drive the synth
         mRecorder << mSequencer.synth();
-
-
     }
 
 //    virtual void onAnimate(double dt) override {
@@ -173,7 +180,6 @@ public:
     virtual void onDraw(Graphics &g) override
     {
         g.clear();
-        g.lighting(true);
 
         // We call the render method for the sequencer. This renders its
         // internal PolySynth
@@ -192,32 +198,23 @@ public:
 
     virtual void onKeyDown(const Keyboard& k) override
     {
-        MyVoice *voice = sequencer().synth().getVoice<MyVoice>();
+        MyVoice *voice = mSequencer.synth().getVoice<MyVoice>();
         int midiNote = asciiToMIDI(k.key());
         float freq = 440.0f * powf(2, (midiNote - 69)/12.0f);
-        voice->set(X.get(), Y.get(), Size.get(), freq, AttackTime.get(), ReleaseTime.get());
+        voice->set(X, Y, Size, freq, AttackTime, ReleaseTime);
 
-        sequencer().synth().triggerOn(voice, 0, midiNote);
+        mSequencer.synth().triggerOn(voice, 0, midiNote);
         // We can pass the spatializer as the "user data" to the synth voice
         // This is not necessary as we have already set it as the default user
         // data. But you can pass per instance user data here if needed.
         // Note that for text sequences to work, you need to set a default
         // user data as you can't pass user data from the text file.
-//        sequencer().synth().triggerOn(voice, 0, midiNote, &mSpatializer);
+//        mSequencer.synth().triggerOn(voice, 0, midiNote, &mSpatializer);
     }
 
     virtual void onKeyUp(const Keyboard &k) override {
         int midiNote = asciiToMIDI(k.key());
-        sequencer().synth().triggerOff(midiNote);
-    }
-
-
-    SynthSequencer &sequencer() {
-        return mSequencer;
-    }
-
-    SynthRecorder &recorder() {
-        return mRecorder;
+        mSequencer.synth().triggerOff(midiNote);
     }
 
 private:
@@ -254,11 +251,6 @@ int main(int argc, char *argv[])
 
     app.initAudio(44100, 256, 2, 0);
     gam::sampleRate(44100);
-
-    // Before starting the application we need to register our voice in
-    // the PolySynth (that is inside the sequencer). This allows
-    // triggering the class from a text file.
-    app.sequencer().synth().registerSynthClass<MyVoice>("MyVoice");
 
     app.start();
     return 0;
