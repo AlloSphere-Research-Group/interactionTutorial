@@ -19,6 +19,8 @@
 #include "Gamma/Envelope.h"
 #include "Gamma/Domain.h"
 
+#include "al/util/sound/al_OutputMaster.hpp"
+
 using namespace al;
 
 /*
@@ -42,10 +44,10 @@ public:
     MyAgent() {
         addDodecahedron(mesh); // Prepare mesh to draw a dodecahedron
 
-        mEnvelope.lengths(4.0f,  3.0f);
+        mEnvelope.lengths(5.0f,  5.0f);
         mEnvelope.levels(0, 1, 0);
         mEnvelope.sustainPoint(1);
-        mModulator.freq(0.9);
+        mModulator.freq(1.9);
     }
 
     virtual void onProcess(AudioIOData &io) override {
@@ -86,7 +88,7 @@ public:
     virtual void onTriggerOn() override {
         // We want to reset the envelope:
         mEnvelope.reset();
-        mModulator.phase(0); // reset the phase
+        mModulator.phase(-0.1); // reset the phase
     }
 
     // No need for onTriggerOff() function as duration of agent's life is fixed
@@ -94,7 +96,7 @@ public:
     // Make everything public so we can query it
 //private:
     gam::Sine<> mSource; // Sine wave oscillator source
-    gam::Sine<> mModulator; // Sine wave modulator
+    gam::Saw<> mModulator; // Saw wave modulator
     gam::AD<> mEnvelope;
 
     unsigned int mLifeSpan; // life span counter
@@ -112,6 +114,9 @@ public:
         // Configure spatializer for the scene
         SpeakerLayout sl = StereoSpeakerLayout();
         scene.setSpatializer<SpatializerType>(sl);
+
+        mOutputMaster.setMeterOn(true);
+        mOutputMaster.setMeterUpdateFreq(1);
     }
 
     virtual void onCreate() override {
@@ -121,7 +126,6 @@ public:
         navControl().active(true); // Disable nav control (because we are using the control to drive the synth
 
         initIMGUI();
-
     }
 
 //    virtual void onAnimate(double dt) override {
@@ -130,6 +134,9 @@ public:
 
     virtual void onDraw(Graphics &g) override
     {
+        float values[2];
+        mOutputMaster.getCurrentValues(values);
+
         g.clear();
         scene.listenerPose(nav()); // Update listener pose to current nav
         scene.render(g);
@@ -167,6 +174,7 @@ public:
             count++;
             voices = voices->next;
         }
+        ImGui::SliderFloat2("Levels", values, 0.0, 0.03);
         endIMGUI_minimal(true);
     }
 
@@ -176,6 +184,7 @@ public:
 
         scene.prepare(audioIO());
         scene.render(io);
+        mOutputMaster.onAudioCB(io);
     }
 
     virtual void onKeyDown(const Keyboard& k) override
@@ -201,6 +210,7 @@ private:
     rnd::Random<> randomGenerator; // Random number generator
 
     DynamicScene scene;
+    OutputMaster mOutputMaster {2, 44100};
 };
 
 
